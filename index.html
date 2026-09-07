@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apartment Manager — โปรแกรมจัดการห้องเช่า</title>
+<meta name="description" content="ดูห้องว่าง จดมิเตอร์ คิดค่าน้ำค่าไฟ และพิมพ์ใบแจ้งหนี้ทั้งตึกในรอบเดียว ทำงานในเครื่องคุณเอง ไม่ต้องต่อเน็ต ไม่มีค่าบริการรายเดือน">
+
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<meta property="og:title" content="Apartment Manager — โปรแกรมจัดการห้องเช่า">
+<meta property="og:description" content="ดูห้องว่าง จดมิเตอร์ ออกบิลทั้งตึก ทำงานในเครื่องคุณเอง">
+<meta property="og:image" content="icon.png">
+<meta property="og:type" content="website">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   โทเคนสี — ดูดมาจากไอคอนโดยตรง
+   ============================================================ */
+:root{
+  --paper:#FAF9F6;
+  --panel:#F1EEE7;
+  --card:#FFFFFF;
+  --ink:#22262F;
+  --slate:#3B4354;
+  --mist:#9AA2AF;
+  --line:#E5E1D9;
+  --gold:#F5B23F;
+  --gold-deep:#B5800F;
+  --leaf:#3F7048;
+
+  --gut:clamp(20px, 5vw, 56px);
+  --measure:34rem;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"IBM Plex Sans Thai","Noto Sans Thai",system-ui,sans-serif;
+  font-size:16px;
+  line-height:1.8;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+img{max-width:100%;display:block}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--gold-deep);outline-offset:3px;border-radius:6px}
+
+h1,h2,h3{
+  font-family:"Anuphan","IBM Plex Sans Thai",sans-serif;
+  font-weight:600;
+  margin:0;
+}
+.n{font-variant-numeric:tabular-nums lining-nums}
+
+.wrap{max-width:1080px;margin:0 auto;padding-inline:var(--gut)}
+
+/* ============================================================
+   แถบบนสุด
+   ============================================================ */
+.topbar{
+  position:sticky;top:0;z-index:30;
+  background:rgba(250,249,246,.90);
+  background:color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);
+}
+.topbar .wrap{display:flex;align-items:center;justify-content:space-between;gap:20px;height:64px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand img{width:30px;height:30px;border-radius:8px}
+.brand b{font-family:"Anuphan",sans-serif;font-size:16.5px;font-weight:600;letter-spacing:-.01em}
+.menu{display:flex;gap:26px;font-size:15px;color:var(--slate)}
+.menu a{text-decoration:none;padding-block:6px;border-bottom:2px solid transparent}
+.menu a:hover{border-bottom-color:var(--gold)}
+@media (max-width:760px){.menu{display:none}}
+
+/* ============================================================
+   ฮีโร่
+   ============================================================ */
+.hero{padding-block:clamp(40px,6vw,80px) clamp(36px,5vw,64px)}
+.hero .wrap{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,336px);
+  gap:clamp(32px,5vw,56px);
+  align-items:center;
+}
+.hero h1{
+  font-size:clamp(2.35rem,5.6vw,4rem);
+  font-weight:700;
+  line-height:1.22;
+  letter-spacing:-.02em;
+  margin-bottom:22px;
+}
+.lede{
+  max-width:var(--measure);
+  font-size:clamp(1.02rem,1.5vw,1.14rem);
+  color:var(--slate);
+  margin:0 0 30px;
+}
+.fine{font-size:14.5px;color:var(--mist);margin:16px 0 0}
+.fine b{color:var(--slate);font-weight:600}
+
+/* ปุ่มดาวน์โหลด */
+.dlrow{display:flex;flex-wrap:wrap;gap:12px}
+.dl{
+  display:flex;align-items:center;gap:13px;
+  padding:14px 22px 14px 18px;
+  background:var(--ink);
+  color:#fff;
+  border-radius:12px;
+  text-decoration:none;
+  line-height:1.35;
+  transition:transform .16s ease, background .16s ease;
+}
+.dl svg{width:22px;height:22px;flex:none;color:var(--gold)}
+.dl span{display:flex;flex-direction:column;font-size:15.5px;font-weight:600}
+.dl small{font-size:12.5px;font-weight:400;color:#B9BEC8;letter-spacing:.01em}
+.dl:hover{background:#171A21;transform:translateY(-2px)}
+.dl:active{transform:translateY(0)}
+
+/* ============================================================
+   หน้าจอโปรแกรมจำลอง — พระเอกของหน้า เดินให้ดูทีละห้อง
+   ============================================================ */
+.plot{position:relative}
+.app{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 20px 40px -18px rgba(34,38,47,.30), 0 2px 6px rgba(34,38,47,.05);
+}
+.appbar{
+  display:flex;align-items:center;gap:9px;
+  padding:11px 14px;background:var(--ink);color:#fff;
+}
+.appbar img{width:18px;height:18px;border-radius:5px}
+.appbar b{font-family:"Anuphan",sans-serif;font-size:12.5px;font-weight:600}
+.appbar span{margin-left:auto;font-size:11.5px;color:#A9AFBB}
+
+.approw{
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr) minmax(0,1fr) 62px;
+  align-items:center;gap:9px;
+}
+.apphead{
+  padding:11px 14px 8px;
+  border-bottom:1px solid var(--line);
+  font-size:11px;color:var(--mist);letter-spacing:.01em;
+}
+.apphead span:last-child{text-align:right}
+.rows{padding:2px 14px}
+.r{
+  padding:11px 14px;margin-inline:-14px;
+  font-size:12.5px;
+  border-left:3px solid transparent;
+  transition:background .25s ease, border-color .25s ease;
+}
+.r + .r{border-top:1px solid var(--line)}
+.r.is-active{background:#FEF9EF;border-left-color:var(--gold)}
+.rn{display:flex;align-items:center;gap:5px;font-weight:600}
+.rn::after{
+  content:"";width:5px;height:5px;border-radius:50%;
+  background:transparent;transition:background .3s ease;
+}
+.r.is-billed .rn::after{background:var(--leaf)}
+.cell{display:flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums;min-width:0}
+.cell .lb{color:var(--mist);font-size:11px}
+.cell .pv{color:var(--mist)}
+.cell .ar{color:#CBD0D8;font-size:11px}
+.cell .cur{
+  min-width:32px;text-align:right;font-weight:600;
+  border:1px solid transparent;border-radius:6px;padding:1px 5px;
+  color:var(--ink);
+}
+.cell .cur:empty::before{content:"—";color:#CBD0D8;font-weight:400}
+.cell .cur.is-typing{
+  border-color:var(--gold);background:#FEF3E0;
+  box-shadow:0 0 0 3px rgba(245,178,63,.18);
+}
+.sum{text-align:right;font-weight:600;font-variant-numeric:tabular-nums;color:#CBD0D8}
+.sum.is-set{color:var(--ink)}
+.r--vacant{color:var(--mist)}
+.r--vacant .vac{grid-column:2 / 4;font-size:12px}
+
+.appfoot{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px 14px;background:var(--panel);border-top:1px solid var(--line);
+  font-size:12px;color:var(--slate);
+}
+.appfoot .done{color:var(--leaf);font-weight:600}
+.printbtn{
+  background:var(--ink);color:#fff;border-radius:8px;
+  padding:6px 13px;font-size:12px;font-weight:600;
+  opacity:.34;transition:opacity .3s ease, transform .12s ease;
+}
+.printbtn.is-ready{opacity:1}
+.printbtn.is-press{transform:scale(.94)}
+
+.caption{
+  margin:16px 0 0;font-size:13px;color:var(--mist);line-height:1.7;
+}
+
+@media (max-width:900px){
+  .hero .wrap{grid-template-columns:1fr}
+  .plot{max-width:420px;order:2}
+}
+
+/* ============================================================
+   หัวข้อของแต่ละส่วน
+   ============================================================ */
+.sec{padding-block:clamp(52px,7vw,86px)}
+.sec[id],.hero{scroll-margin-top:72px}
+.sec + .sec{border-top:1px solid var(--line)}
+.shead{max-width:var(--measure);margin-bottom:clamp(30px,4vw,46px)}
+.shead h2{
+  font-size:clamp(1.65rem,3.1vw,2.25rem);
+  line-height:1.35;letter-spacing:-.015em;
+  margin-bottom:10px;
+}
+.shead p{margin:0;color:var(--slate);font-size:1.02rem}
+
+/* ============================================================
+   สามอย่างที่ทำทุกเดือน
+   ============================================================ */
+.job{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);
+  gap:clamp(24px,4vw,56px);align-items:center;
+  padding-block:clamp(28px,4vw,44px);
+}
+.job + .job{border-top:1px dashed var(--line)}
+.job h3{font-size:1.28rem;line-height:1.5;margin-bottom:10px;letter-spacing:-.01em}
+.job p{margin:0;color:var(--slate);max-width:30rem}
+.shot{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:18px;
+}
+@media (max-width:820px){.job{grid-template-columns:1fr}}
+
+/* ตารางห้องย่อ */
+.mini{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-width:300px;margin:0 auto}
+.unit{position:relative;aspect-ratio:5/6;border-radius:5px;background:var(--slate);padding:2px}
+.pane{
+  display:flex;align-items:flex-end;justify-content:center;
+  height:100%;border-radius:3px;background:#C8CDD5;
+  font-size:11px;font-weight:600;color:var(--slate);
+  font-variant-numeric:tabular-nums;padding-bottom:2px;
+}
+.unit--on .pane{background:var(--gold);color:var(--gold-deep)}
+.unit--todo::after{
+  content:"";position:absolute;top:6px;right:6px;
+  width:7px;height:7px;border-radius:50%;background:var(--ink);
+}
+
+/* แถวจดมิเตอร์ */
+.mrow{
+  display:grid;
+  grid-template-columns:44px 30px 1fr 16px 1fr 54px;
+  align-items:center;gap:8px;
+  padding:9px 4px;font-size:14px;
+  font-variant-numeric:tabular-nums;
+}
+.mrow + .mrow{border-top:1px solid var(--line)}
+.mrow .u{font-weight:600}
+.mrow .lab{color:var(--mist);font-size:13px}
+.mrow .old{color:var(--mist);text-align:right}
+.mrow .ar{color:var(--mist);text-align:center}
+.mrow .box{
+  border:1px solid var(--line);border-radius:7px;
+  padding:3px 10px;text-align:right;font-weight:600;background:var(--paper);
+}
+.mrow .box.live{border-color:var(--gold);background:#FEF6E6;box-shadow:0 0 0 3px rgba(245,178,63,.16)}
+.mrow .used{text-align:right;color:var(--leaf);font-weight:600;font-size:13px}
+
+/* ใบแจ้งหนี้ */
+.inv{font-size:14px}
+.invhead{
+  display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  padding-bottom:12px;margin-bottom:6px;border-bottom:2px solid var(--ink);
+}
+.invhead b{font-family:"Anuphan",sans-serif;font-size:15px}
+.invhead span{color:var(--mist);font-size:12.5px;font-variant-numeric:tabular-nums}
+.iline{display:flex;justify-content:space-between;gap:14px;padding:9px 0;line-height:1.5}
+.iline + .iline{border-top:1px solid var(--line)}
+.iline em{display:block;font-style:normal;font-size:12.5px;color:var(--mist);font-variant-numeric:tabular-nums}
+.amt{font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap}
+.itotal{
+  display:flex;justify-content:space-between;gap:14px;
+  margin-top:8px;padding-top:12px;border-top:2px solid var(--ink);
+  font-weight:600;font-size:15px;
+}
+.itotal .amt{font-weight:600}
+
+/* ============================================================
+   รอบเดือน — เป็นลำดับจริง จึงใส่เลขกำกับ
+   ============================================================ */
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:clamp(18px,3vw,30px)}
+.step{padding-top:16px;border-top:2px solid var(--ink)}
+.step .no{
+  font-family:"Anuphan",sans-serif;font-weight:600;font-size:13px;
+  color:var(--gold-deep);font-variant-numeric:tabular-nums;
+}
+.step h3{font-size:1.08rem;margin:2px 0 8px}
+.step p{margin:0;font-size:14.6px;color:var(--slate);line-height:1.75}
+
+/* ============================================================
+   แถบกลางคืน
+   ============================================================ */
+.band{background:var(--ink);color:#fff;padding:clamp(50px,6vw,76px) 0 clamp(120px,13vw,150px);position:relative;overflow:hidden}
+.night{
+  position:absolute;inset:auto 0 0;height:92px;display:flex;align-items:flex-end;gap:13px;
+  padding-inline:var(--gut);
+}
+.night i{flex:1;background:#2A2F3A;border-radius:4px 4px 0 0}
+.night i:nth-child(3n){
+  background-image:
+    repeating-linear-gradient(180deg,#2A2F3A 0 10px,transparent 10px 22px),
+    repeating-linear-gradient(90deg,transparent 0 6px,rgba(245,178,63,.80) 6px 13px,transparent 13px 19px);
+  background-position:0 8px;
+}
+.night i:nth-child(5n){
+  background-image:
+    repeating-linear-gradient(180deg,#2A2F3A 0 10px,transparent 10px 22px),
+    repeating-linear-gradient(90deg,transparent 0 6px,rgba(245,178,63,.30) 6px 13px,transparent 13px 19px);
+  background-position:0 8px;
+}
+.band .wrap{position:relative}
+.band p{
+  font-family:"Anuphan",sans-serif;font-weight:600;
+  font-size:clamp(1.5rem,3.2vw,2.2rem);line-height:1.4;letter-spacing:-.015em;
+  margin:0 0 12px;max-width:22ch;
+}
+.band span{color:#AEB4C0;font-size:1rem}
+
+/* ============================================================
+   ข้อมูลอยู่ในเครื่อง + สิ่งที่ไม่ทำ
+   ============================================================ */
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:clamp(18px,3vw,32px)}
+.fact h3{display:flex;align-items:center;gap:9px;font-size:1.06rem;margin-bottom:8px}
+.fact h3 svg{width:19px;height:19px;flex:none;color:var(--gold-deep)}
+.fact p{margin:0;color:var(--slate);font-size:14.8px;line-height:1.78}
+
+.scope{list-style:none;margin:0;padding:0;max-width:52rem}
+.scope li{
+  display:flex;gap:14px;padding:15px 0;color:var(--slate);font-size:15px;line-height:1.75;
+}
+.scope li + li{border-top:1px solid var(--line)}
+.scope li::before{
+  content:"";flex:none;width:13px;height:2px;background:var(--mist);margin-top:14px;
+}
+
+/* ============================================================
+   ส่วนดาวน์โหลด
+   ============================================================ */
+.get{background:var(--panel);border-top:1px solid var(--line)}
+.get .dl{background:var(--ink)}
+.req{margin:22px 0 0;font-size:14px;color:var(--slate);line-height:1.9;font-variant-numeric:tabular-nums}
+
+/* ============================================================
+   ท้ายหน้า
+   ============================================================ */
+.foot{border-top:1px solid var(--line)}
+.foot .wrap{
+  display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;
+  padding-block:26px;font-size:14px;color:var(--mist);
+}
+.foot .brand img{width:26px;height:26px}
+.foot .brand b{font-size:15px;color:var(--ink)}
+
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <img src="icon.png" alt="">
+      <b>Apartment Manager</b>
+    </a>
+    <div class="menu">
+      <a href="#what">ทำอะไรได้</a>
+      <a href="#routine">รอบเดือน</a>
+      <a href="#local">ข้อมูลของคุณ</a>
+      <a href="#get">ดาวน์โหลด</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================ ฮีโร่ ============================ -->
+<header class="hero" id="top">
+  <div class="wrap">
+    <div>
+      <h1>ดูทั้งตึก<br>จบในหน้าเดียว</h1>
+      <p class="lede">
+        ห้องไหนว่าง ห้องไหนยังไม่ได้จดมิเตอร์ ห้องไหนยังไม่ได้ออกบิล
+        เห็นพร้อมกันตั้งแต่เปิดโปรแกรม แล้วพิมพ์ใบแจ้งหนี้ให้ผู้เช่าทุกห้องในรอบเดียว
+      </p>
+
+      <div class="dlrow">
+        <!-- ► วางไฟล์ติดตั้งไว้ในโฟลเดอร์เดียวกับหน้านี้ แล้วแก้ href ข้างล่างให้ตรงชื่อไฟล์ -->
+        <a class="dl" href="Apartment-Manager-Setup-1.1.0.exe" download>
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M3 5.5 10 4.6v6.9H3zM11 4.4 21 3v8.5h-10zM3 12.5h7v6.9L3 18.5zM11 12.5h10V21l-10-1.4z"/>
+          </svg>
+          <span>ดาวน์โหลดสำหรับ Windows<small>ไฟล์ .exe</small></span>
+        </a>
+        <a class="dl" href="Apartment-Manager-1.1.0-arm64.dmg" download>
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M16.4 12.6c0-2.2 1.8-3.3 1.9-3.3-1-1.5-2.6-1.7-3.2-1.8-1.4-.1-2.7.8-3.3.8-.7 0-1.7-.8-2.8-.8-1.5 0-2.8.8-3.6 2.1-1.5 2.6-.4 6.5 1.1 8.6.7 1 1.6 2.2 2.7 2.1 1.1 0 1.5-.7 2.8-.7s1.6.7 2.8.7c1.1 0 1.9-1 2.6-2.1.8-1.2 1.2-2.4 1.2-2.4s-2.2-.9-2.2-3.2zM14.3 5.6c.6-.7 1-1.7.9-2.7-.9 0-2 .6-2.6 1.3-.6.6-1 1.7-.9 2.6 1 .1 2-.5 2.6-1.2z"/>
+          </svg>
+          <span>ดาวน์โหลดสำหรับ macOS<small>ไฟล์ .dmg</small></span>
+        </a>
+      </div>
+
+      <p class="fine">ติดตั้งครั้งเดียว ใช้งานได้ตลอด <b>ไม่มีค่าบริการรายเดือน</b></p>
+    </div>
+
+    <div class="plot">
+      <div class="app" id="appdemo" role="img"
+           aria-label="ตัวอย่างการทำงานในโปรแกรม: กรอกเลขมิเตอร์น้ำและไฟทีละห้อง แล้วยอดในบิลขึ้นให้เอง">
+        <div class="appbar">
+          <img src="icon.png" alt="">
+          <b>Apartment Manager</b>
+          <span>กันยายน 2026</span>
+        </div>
+
+        <div class="apphead approw">
+          <span>ห้อง</span><span>น้ำ</span><span>ไฟ</span><span>ยอดรวม</span>
+        </div>
+
+        <div class="rows">
+          <div class="r approw" data-w="100" data-wn="112" data-e="500" data-en="640" data-sum="5,778">
+            <span class="rn">101</span>
+            <span class="cell"><span class="pv">100</span><span class="ar">→</span><span class="cur"></span></span>
+            <span class="cell"><span class="pv">500</span><span class="ar">→</span><span class="cur"></span></span>
+            <span class="sum">—</span>
+          </div>
+          <div class="r approw" data-w="151" data-wn="159" data-e="820" data-en="932" data-sum="4,946">
+            <span class="rn">102</span>
+            <span class="cell"><span class="pv">151</span><span class="ar">→</span><span class="cur"></span></span>
+            <span class="cell"><span class="pv">820</span><span class="ar">→</span><span class="cur"></span></span>
+            <span class="sum">—</span>
+          </div>
+          <div class="r approw" data-w="96" data-wn="108" data-e="441" data-en="555" data-sum="5,102">
+            <span class="rn">103</span>
+            <span class="cell"><span class="pv">96</span><span class="ar">→</span><span class="cur"></span></span>
+            <span class="cell"><span class="pv">441</span><span class="ar">→</span><span class="cur"></span></span>
+            <span class="sum">—</span>
+          </div>
+          <div class="r approw r--vacant">
+            <span class="rn">104</span>
+            <span class="vac">ห้องว่าง</span>
+            <span class="sum">—</span>
+          </div>
+        </div>
+
+        <div class="appfoot">
+          <span id="progress">ออกบิลแล้ว 0 จาก 3 ห้อง</span>
+          <span class="printbtn" id="printbtn">พิมพ์ทั้งหมด</span>
+        </div>
+      </div>
+
+      <p class="caption">กรอกแค่เลขมิเตอร์ปัจจุบัน ยอดค่าน้ำค่าไฟและยอดรวมในบิลคิดให้เอง</p>
+    </div>
+  </div>
+</header>
+
+<!-- ==================== สามอย่างที่ทำทุกเดือน ==================== -->
+<section class="sec" id="what">
+  <div class="wrap">
+    <div class="shead">
+      <h2>สามอย่างที่ทำทุกเดือน</h2>
+      <p>โปรแกรมนี้ทำสามเรื่องนี้ให้จบ ไม่มีอย่างอื่นมากวน</p>
+    </div>
+
+    <div class="job">
+      <div>
+        <h3>รู้ทันทีว่าห้องไหนว่าง</h3>
+        <p>ไม่ต้องเปิดสมุดหรือไล่ถาม กระดานห้องบอกทั้งคนที่อยู่ตอนนี้ และห้องที่กำลังจะว่างตามกำหนดย้ายออก</p>
+      </div>
+      <div class="shot">
+        <div class="mini">
+          <div class="unit unit--on"><span class="pane">201</span></div>
+          <div class="unit unit--on"><span class="pane">202</span></div>
+          <div class="unit unit--on unit--todo"><span class="pane">203</span></div>
+          <div class="unit unit--on"><span class="pane">204</span></div>
+          <div class="unit"><span class="pane">205</span></div>
+          <div class="unit unit--on"><span class="pane">101</span></div>
+          <div class="unit unit--on"><span class="pane">102</span></div>
+          <div class="unit unit--on unit--todo"><span class="pane">103</span></div>
+          <div class="unit"><span class="pane">104</span></div>
+          <div class="unit unit--on"><span class="pane">105</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="job">
+      <div>
+        <h3>จดมิเตอร์ พิมพ์เลขเดียวต่อห้อง</h3>
+        <p>เลขเดือนก่อนขึ้นให้เอง พิมพ์แค่เลขปัจจุบัน กด Enter ลงห้องถัดไป ถ้าเลขน้อยกว่าเดือนก่อนจะเตือนทันที ก่อนที่มันจะกลายเป็นบิลผิด</p>
+      </div>
+      <div class="shot">
+        <div class="mrow"><span class="u">101</span><span class="lab">น้ำ</span><span class="old">100</span><span class="ar">→</span><span class="box live">112</span><span class="used">+12</span></div>
+        <div class="mrow"><span class="u"></span><span class="lab">ไฟ</span><span class="old">500</span><span class="ar">→</span><span class="box live">640</span><span class="used">+140</span></div>
+        <div class="mrow"><span class="u">102</span><span class="lab">น้ำ</span><span class="old">151</span><span class="ar">→</span><span class="box" style="color:var(--mist)">—</span><span class="used"></span></div>
+      </div>
+    </div>
+
+    <div class="job">
+      <div>
+        <h3>ออกบิลทั้งตึก แล้วสั่งพิมพ์รวดเดียว</h3>
+        <p>คิดค่าน้ำค่าไฟตามเรทที่ตั้งไว้ รวมค่าเช่าและค่าธรรมเนียมประจำ แยกรายการให้ผู้เช่าเห็นว่าคิดมาอย่างไร แล้วพิมพ์ทั้งเดือนใบละหน้า</p>
+      </div>
+      <div class="shot">
+        <div class="inv">
+          <div class="invhead"><b>อพาร์ตเมนต์ของคุณ</b><span>ห้อง 101 · 09/2026</span></div>
+          <div class="iline"><span>ค่าเช่า</span><span class="amt">3,800.00</span></div>
+          <div class="iline"><span>ค่าน้ำ<em>12 หน่วย (100 → 112)</em></span><span class="amt">163.00</span></div>
+          <div class="iline"><span>ค่าไฟ<em>140 หน่วย (500 → 640)</em></span><span class="amt">1,315.00</span></div>
+          <div class="iline"><span>ค่าส่วนกลาง<em>รายเดือน</em></span><span class="amt">500.00</span></div>
+          <div class="itotal"><span>รวมทั้งสิ้น</span><span class="amt">5,778.00</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= รอบเดือน ========================= -->
+<section class="sec" id="routine">
+  <div class="wrap">
+    <div class="shead">
+      <h2>รอบเดือนหนึ่งรอบ</h2>
+      <p>ทำตามลำดับนี้ทุกเดือน ประมาณสิบถึงยี่สิบนาทีสำหรับตึกยี่สิบห้อง</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="no">ขั้นที่ 1</div>
+        <h3>เดินจดมิเตอร์</h3>
+        <p>กรอกได้ทีละห้อง ปิดโปรแกรมแล้วมาต่อวันหลังได้ ไม่มีอะไรหาย</p>
+      </div>
+      <div class="step">
+        <div class="no">ขั้นที่ 2</div>
+        <h3>ใส่ค่าซ่อมถ้ามี</h3>
+        <p>ประตูพัง แอร์เสีย ลงไว้ที่ห้องนั้น ขึ้นบิลเดือนนี้เดือนเดียว</p>
+      </div>
+      <div class="step">
+        <div class="no">ขั้นที่ 3</div>
+        <h3>ตรวจแล้วออกบิล</h3>
+        <p>เห็นยอดทุกห้องก่อนกดจริง ห้องที่ยังไม่จดมิเตอร์จะถูกข้ามและบอกเหตุผล</p>
+      </div>
+      <div class="step">
+        <div class="no">ขั้นที่ 4</div>
+        <h3>พิมพ์แจก</h3>
+        <p>พิมพ์ทีละใบหรือทั้งเดือนก็ได้ จะเก็บเป็นไฟล์ PDF ไว้ก่อนก็ได้เหมือนกัน</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= แถบกลางคืน ========================= -->
+<section class="band" aria-label="สรุปเวลาที่ใช้">
+  <div class="night" aria-hidden="true">
+    <i style="height:38%"></i><i style="height:62%"></i><i style="height:30%"></i>
+    <i style="height:74%"></i><i style="height:46%"></i><i style="height:58%"></i>
+    <i style="height:34%"></i><i style="height:68%"></i><i style="height:42%"></i>
+    <i style="height:54%"></i><i style="height:28%"></i><i style="height:64%"></i>
+  </div>
+  <div class="wrap">
+    <p>ตึกยี่สิบห้อง ออกบิลครบทุกห้อง ในเวลาไม่ถึงยี่สิบนาที</p>
+    <span>ไม่ต้องกดเครื่องคิดเลข ไม่ต้องคัดลอกเลขจากสมุดอีกต่อไป</span>
+  </div>
+</section>
+
+<!-- ====================== ข้อมูลอยู่ในเครื่อง ====================== -->
+<section class="sec" id="local">
+  <div class="wrap">
+    <div class="shead">
+      <h2>ข้อมูลอยู่ในเครื่องคุณ</h2>
+      <p>ไม่ใช่บริการออนไลน์ ไม่มีบัญชีให้สมัคร ไม่มีข้อมูลผู้เช่าถูกส่งไปไหน</p>
+    </div>
+    <div class="facts">
+      <div class="fact">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <path d="M12 20h.01M5 12.5a10 10 0 0 1 14 0M2 8.5a15 15 0 0 1 20 0M3 3l18 18"/>
+          </svg>
+          ใช้ได้ตอนเน็ตหลุด
+        </h3>
+        <p>โปรแกรมและข้อมูลอยู่ในเครื่องเดียวกัน เน็ตเสียก็ยังออกบิลได้ตามปกติ</p>
+      </div>
+      <div class="fact">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/>
+          </svg>
+          สำรองให้เองทุกครั้งที่เปิด
+        </h3>
+        <p>คัดลอกฐานข้อมูลเก็บไว้ให้อัตโนมัติ ย้อนกลับได้สามสิบครั้งล่าสุด</p>
+      </div>
+      <div class="fact">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+          </svg>
+          ไม่มีค่าบริการรายเดือน
+        </h3>
+        <p>ติดตั้งครั้งเดียวแล้วใช้ได้ตลอด ไม่มีอะไรหมดอายุ ไม่มีจำนวนห้องจำกัด</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== สิ่งที่โปรแกรมไม่ทำ ====================== -->
+<section class="sec">
+  <div class="wrap">
+    <div class="shead">
+      <h2>สิ่งที่โปรแกรมนี้ไม่ทำ</h2>
+      <p>บอกไว้ก่อนดาวน์โหลด จะได้ไม่ต้องเสียเวลาลองแล้วพบทีหลัง</p>
+    </div>
+    <ul class="scope">
+      <li>ไม่ได้บันทึกว่าใครจ่ายเงินแล้ว ออกใบแจ้งหนี้กับใบเสร็จให้ ส่วนการติดตามยอดค้างยังต้องทำเอง</li>
+      <li>ไม่ได้รับชำระเงินออนไลน์ พิมพ์เลขบัญชีลงบิลให้ผู้เช่าโอนได้ แต่ไม่ได้เชื่อมกับธนาคาร</li>
+      <li>ผู้เช่าไม่มีแอปหรือหน้าเข้าระบบ โปรแกรมนี้สำหรับเจ้าของและคนดูแลตึกเท่านั้น</li>
+      <li>ดูแลได้ตึกเดียวต่อการติดตั้งหนึ่งครั้ง</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ========================= ดาวน์โหลด ========================= -->
+<section class="sec get" id="get">
+  <div class="wrap">
+    <div class="shead">
+      <h2>ดาวน์โหลด</h2>
+      <p>เลือกให้ตรงกับเครื่องที่จะใช้งาน ติดตั้งเสร็จเปิดใช้ได้เลย ไม่ต้องตั้งค่าอะไรก่อน</p>
+    </div>
+    <div class="dlrow">
+      <!-- ► แก้ href สองอันนี้ให้ชี้ไปที่ไฟล์ติดตั้งจริงบนเว็บของคุณ -->
+      <a class="dl" href="#" download>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M3 5.5 10 4.6v6.9H3zM11 4.4 21 3v8.5h-10zM3 12.5h7v6.9L3 18.5zM11 12.5h10V21l-10-1.4z"/>
+        </svg>
+        <span>ดาวน์โหลดสำหรับ Windows<small>ไฟล์ .exe</small></span>
+      </a>
+      <a class="dl" href="#" download>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M16.4 12.6c0-2.2 1.8-3.3 1.9-3.3-1-1.5-2.6-1.7-3.2-1.8-1.4-.1-2.7.8-3.3.8-.7 0-1.7-.8-2.8-.8-1.5 0-2.8.8-3.6 2.1-1.5 2.6-.4 6.5 1.1 8.6.7 1 1.6 2.2 2.7 2.1 1.1 0 1.5-.7 2.8-.7s1.6.7 2.8.7c1.1 0 1.9-1 2.6-2.1.8-1.2 1.2-2.4 1.2-2.4s-2.2-.9-2.2-3.2zM14.3 5.6c.6-.7 1-1.7.9-2.7-.9 0-2 .6-2.6 1.3-.6.6-1 1.7-.9 2.6 1 .1 2-.5 2.6-1.2z"/>
+        </svg>
+        <span>ดาวน์โหลดสำหรับ macOS<small>ไฟล์ .dmg</small></span>
+      </a>
+    </div>
+    <p class="req">
+      รองรับ Windows 10 ขึ้นไป และ macOS 11 ขึ้นไป<br>
+      เวอร์ชัน 1.0 ขนาดไฟล์ประมาณ 90 MB
+    </p>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="icon.png" alt=""><b>Apartment Manager</b></a>
+    <span>© 2026</span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var app = document.getElementById('appdemo');
+  if(!app) return;
+  var rows = Array.prototype.slice.call(app.querySelectorAll('.r:not(.r--vacant)'));
+  var prog = document.getElementById('progress');
+  var btn  = document.getElementById('printbtn');
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function fill(row, done){
+    var cur = row.querySelectorAll('.cur');
+    cur[0].textContent = done ? row.dataset.wn : '';
+    cur[1].textContent = done ? row.dataset.en : '';
+    var sum = row.querySelector('.sum');
+    sum.textContent = done ? row.dataset.sum : '—';
+    sum.classList.toggle('is-set', !!done);
+    row.classList.toggle('is-billed', !!done);
+    row.classList.remove('is-active');
+  }
+
+  /* ผู้ใช้ที่ตั้งค่าลดการเคลื่อนไหว จะเห็นผลลัพธ์สุดท้ายนิ่ง ๆ */
+  if(reduce){
+    rows.forEach(function(r){ fill(r, true); });
+    prog.innerHTML = 'ออกบิลแล้ว <span class="done">3 จาก 3 ห้อง</span>';
+    btn.classList.add('is-ready');
+    return;
+  }
+
+  var sleep = function(ms){ return new Promise(function(r){ setTimeout(r, ms); }); };
+  var running = false, alive = true;
+
+  async function type(el, value){
+    el.classList.add('is-typing');
+    el.textContent = '';
+    var str = String(value);
+    for(var i = 0; i < str.length; i++){
+      if(!alive) return;
+      el.textContent = str.slice(0, i + 1);
+      await sleep(150);
+    }
+    await sleep(300);
+    el.classList.remove('is-typing');
+  }
+
+  async function reset(){
+    rows.forEach(function(r){ fill(r, false); });
+    prog.textContent = 'ออกบิลแล้ว 0 จาก 3 ห้อง';
+    btn.classList.remove('is-ready', 'is-press');
+  }
+
+  async function cycle(){
+    await reset();
+    await sleep(900);
+    for(var i = 0; i < rows.length; i++){
+      if(!alive) return;
+      var row = rows[i], cur = row.querySelectorAll('.cur');
+      row.classList.add('is-active');
+      await type(cur[0], row.dataset.wn);
+      await type(cur[1], row.dataset.en);
+      await sleep(220);
+      var sum = row.querySelector('.sum');
+      sum.textContent = row.dataset.sum;
+      sum.classList.add('is-set');
+      row.classList.add('is-billed');
+      prog.textContent = 'ออกบิลแล้ว ' + (i + 1) + ' จาก 3 ห้อง';
+      await sleep(500);
+      row.classList.remove('is-active');
+      await sleep(280);
+    }
+    btn.classList.add('is-ready');
+    await sleep(900);
+    btn.classList.add('is-press');
+    await sleep(200);
+    btn.classList.remove('is-press');
+    prog.innerHTML = '<span class="done">พิมพ์ใบแจ้งหนี้แล้ว 3 ใบ</span>';
+    await sleep(2600);
+  }
+
+  async function loop(){
+    if(running) return;
+    running = true;
+    while(alive){ await cycle(); }
+    running = false;
+  }
+
+  /* เริ่มเดินเมื่อเลื่อนมาถึง และหยุดเมื่อเลื่อนผ่านไปแล้ว */
+  if('IntersectionObserver' in window){
+    new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ alive = true; loop(); }
+        else { alive = false; }
+      });
+    }, {threshold: .25}).observe(app);
+  } else {
+    loop();
+  }
+})();
+</script>
+
+</body>
+</html>
